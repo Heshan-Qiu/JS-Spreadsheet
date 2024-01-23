@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const grid = new Grid(SPREADSHEET_ROWS, SPREADSHEET_COLUMNS);
 
     renderSpreadsheet(grid, spreadsheetContainer);
+
+    initRefreshButton(grid, spreadsheetContainer);
 });
 
 function renderSpreadsheet(grid, container) {
@@ -60,7 +62,7 @@ function renderCell(cell) {
         inputElement.disabled = true;
     }
 
-    inputElement.addEventListener("input", function (event) {
+    inputElement.addEventListener("change", function (event) {
         cell.value = event.target.value;
         console.log(
             `Cell ${cell.row},${cell.column} value changed to ${cell.value}`,
@@ -68,9 +70,36 @@ function renderCell(cell) {
         );
     });
 
+    inputElement.addEventListener("focus", function (event) {
+        const cellSelectedInputElement =
+            document.getElementById("cellSelectedInput");
+        const cellSelectedValueInputElement = document.getElementById(
+            "cellSelectedValueInput"
+        );
+
+        cellSelectedInputElement.value = event.target.id;
+        cellSelectedValueInputElement.value = event.target.value;
+    });
+
     cellElement.appendChild(inputElement);
 
     return cellElement;
+}
+
+function initRefreshButton(grid, spreadsheetContainer) {
+    if (!grid instanceof Grid && !spreadsheetContainer instanceof HTMLElement) {
+        throw new Error("Invalid arguments");
+    }
+
+    const refreshButton = document.getElementById("refreshButton");
+    refreshButton.addEventListener("click", function (event) {
+        spreadsheetContainer.innerHTML = "";
+        // this is too fast to see the change, so we add a delay
+        // renderSpreadsheet(grid, spreadsheetContainer);
+        setTimeout(function () {
+            renderSpreadsheet(grid, spreadsheetContainer);
+        }, 300);
+    });
 }
 
 function indexToLetters(index) {

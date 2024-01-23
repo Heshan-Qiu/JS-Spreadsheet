@@ -7,6 +7,27 @@
         <link rel="stylesheet" href="style.css" />
     </head>
     <body>
+        <div id="toolbar" class="toolbar">
+            <input
+                id="cellSelectedInput"
+                class="cellSelectedInput"
+                type="text"
+                size="10"
+            />
+            :
+            <input
+                id="cellSelectedValueInput"
+                class="cellSelectedValueInput"
+                type="text"
+            />
+            <button id="refreshButton">Refresh</button>
+            <input id="boldCheckbox" type="checkbox" />
+            <label for="boldCheckbox">Bold</label>
+            <input id="italicCheckbox" type="checkbox" />
+            <label for="italicCheckbox">Italic</label>
+            <input id="underlineCheckbox" type="checkbox" />
+            <label for="underlineCheckbox">Underline</label>
+        </div>
         <div id="spreadsheetContainer" class="spreadsheetContainer"></div>
         <script src="script.js"></script>
     </body>
