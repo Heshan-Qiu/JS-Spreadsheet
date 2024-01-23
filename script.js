@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
     renderSpreadsheet(grid, spreadsheetContainer);
 
     initRefreshButton(grid, spreadsheetContainer);
+    initCheckboxes();
 });
 
 function renderSpreadsheet(grid, container) {
@@ -78,7 +79,9 @@ function renderCell(cell) {
         );
 
         cellSelectedInputElement.value = event.target.id;
-        cellSelectedValueInputElement.value = event.target.value;
+        cellSelectedValueInputElement.value = cell.formula
+            ? cell.formula
+            : cell.value;
     });
 
     cellElement.appendChild(inputElement);
@@ -104,6 +107,44 @@ function initRefreshButton(grid, spreadsheetContainer) {
         setTimeout(function () {
             renderSpreadsheet(grid, spreadsheetContainer);
         }, 300);
+    });
+}
+
+function initCheckboxes() {
+    const boldCheckbox = document.getElementById("boldCheckbox");
+    boldCheckbox.addEventListener("change", (event) => {
+        const refElement = document.getElementById("cellSelectedInput");
+        const cell = document.getElementById(refElement.value);
+
+        if (event.target.checked) {
+            cell.style.fontWeight = "bold";
+        } else {
+            cell.style.fontWeight = "normal";
+        }
+    });
+
+    const italicCheckbox = document.getElementById("italicCheckbox");
+    italicCheckbox.addEventListener("change", (event) => {
+        const refElement = document.getElementById("cellSelectedInput");
+        const cell = document.getElementById(refElement.value);
+
+        if (event.target.checked) {
+            cell.style.fontStyle = "italic";
+        } else {
+            cell.style.fontStyle = "normal";
+        }
+    });
+
+    const underlineCheckbox = document.getElementById("underlineCheckbox");
+    underlineCheckbox.addEventListener("change", (event) => {
+        const refElement = document.getElementById("cellSelectedInput");
+        const cell = document.getElementById(refElement.value);
+
+        if (event.target.checked) {
+            cell.style.textDecoration = "underline";
+        } else {
+            cell.style.textDecoration = "none";
+        }
     });
 }
 
