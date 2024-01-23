@@ -1,0 +1,29 @@
+body {
+    padding-top: 20px;
+}
+
+.row {
+    display: flex;
+}
+
+.cell {
+    border: 1px solid #ddd;
+    display: flex;
+    flex: 0 0 100px;
+}
+
+.cell input {
+    border: none;
+    width: 100%;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.header {
+    background-color: #eee;
+}
+
+.header input {
+    font-weight: bold;
+    text-align: center;
+}
