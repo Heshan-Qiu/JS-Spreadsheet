@@ -47,8 +47,8 @@ function renderCell(cell) {
 
     const inputElement = document.createElement("input");
     inputElement.type = "text";
-    // inputElement.value = cell.value;
-    inputElement.value = cell.row + "," + cell.column;
+    inputElement.value = cell.value;
+    // inputElement.value = cell.row + "," + cell.column;
     inputElement.id = indexToReference(cell.row, cell.column);
 
     if (cell.isHeader) {
@@ -63,7 +63,7 @@ function renderCell(cell) {
     }
 
     inputElement.addEventListener("change", function (event) {
-        cell.value = event.target.value;
+        cell.updateValue(event.target.value);
         console.log(
             `Cell ${cell.row},${cell.column} value changed to ${cell.value}`,
             cell
@@ -82,6 +82,11 @@ function renderCell(cell) {
     });
 
     cellElement.appendChild(inputElement);
+
+    cell.onChange = () => {
+        inputElement.value = cell.value;
+        console.log(`Cell ${cell.row},${cell.column} value changed`, cell);
+    };
 
     return cellElement;
 }
@@ -115,6 +120,19 @@ function indexToLetters(index) {
     return result;
 }
 
+function lettersToIndex(letters) {
+    if (typeof letters !== "string") {
+        throw new Error("Invalid arguments");
+    }
+
+    let result = 0;
+    for (let i = 0; i < letters.length; i++) {
+        result *= 26;
+        result += letters.charCodeAt(i) - 64;
+    }
+    return result;
+}
+
 function indexToReference(row, column) {
     if (
         !Number.isInteger(row) ||
@@ -126,6 +144,80 @@ function indexToReference(row, column) {
     }
 
     return indexToLetters(column) + row;
+}
+
+function referenceToIndex(reference) {
+    if (typeof reference !== "string") {
+        throw new Error("Invalid arguments");
+    }
+
+    const [col, row] = reference.match(/[0-9]+|[A-Z]+/g);
+    return [parseInt(row), lettersToIndex(col)];
+}
+
+function isFormula(value) {
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    return value.startsWith("=");
+}
+
+function getAllDependentCellsFromFormula(formula, grid) {
+    if (!grid instanceof Grid) {
+        throw new Error("Invalid arguments");
+    }
+
+    if (this.isFormula(formula)) {
+        // Remove '=' and all whitespace from the formula
+        const expression = formula.slice(1).replace(/\s/g, "");
+        // Split the expression based on operators (+, -, *, /), exclude the operators
+        let parts = expression.split(/([+*/-])/).filter((part) => {
+            return !part.match(/[+*/-]/);
+        });
+
+        let cells = [];
+        for (const part of parts) {
+            if (part.startsWith("SUM")) {
+                const [startRef, endRef] = part
+                    .slice(4, -1)
+                    .split(":")
+                    .map((ref) => referenceToIndex(ref));
+                for (let i = startRef[0]; i <= endRef[0]; i++) {
+                    for (let j = startRef[1]; j <= endRef[1]; j++) {
+                        cells.push(grid.getCell(i, j));
+                    }
+                }
+            } else if (part.match(/[A-Z]+[0-9]+/)) {
+                cells.push(grid.getCell(...referenceToIndex(part)));
+            }
+        }
+
+        return cells;
+    }
+
+    return [];
+}
+
+function isCircularReference(cell, formula) {
+    if (!cell instanceof Cell || typeof formula !== "string") {
+        throw new Error("Invalid arguments");
+    }
+
+    // Get all cell references in the formula
+    const matches = getAllDependentCellsFromFormula(formula, cell.grid);
+    if (matches.includes(cell)) {
+        return true;
+    }
+
+    // Check if any of the referenced cells have circular references
+    for (const match of matches) {
+        if (match.formula && isCircularReference(cell, match.formula)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 class Grid {
@@ -155,10 +247,165 @@ class Grid {
 class Cell {
     constructor(grid, value = "", formula = "", isHeader = false) {
         this.grid = grid;
-        this.value = value;
+        this._value = value;
         this.formula = formula;
         this.isHeader = isHeader;
         this.row = null;
         this.columns = null;
+        this.onChange = null; // call back function when value changes
+        this.dependencies = []; // list of cells that depend on this cell
+    }
+
+    set value(value) {
+        this._value = value;
+        if (this.onChange) {
+            this.onChange();
+        }
+    }
+
+    get value() {
+        return this._value;
+    }
+
+    addDependency(cell) {
+        if (!cell instanceof Cell) {
+            throw new Error("Invalid arguments");
+        }
+
+        if (!this.dependencies.includes(cell)) {
+            this.dependencies.push(cell);
+        }
+    }
+
+    removeDependency(cell) {
+        if (!cell instanceof Cell) {
+            throw new Error("Invalid arguments");
+        }
+
+        const index = this.dependencies.indexOf(cell);
+        if (index !== -1) {
+            this.dependencies.splice(index, 1);
+        }
+    }
+
+    updateDependencies() {
+        this.dependencies.forEach((cell) => {
+            cell.computeFormula();
+            cell.updateDependencies();
+        });
+    }
+
+    /**
+     * Updates the value of the cell.
+     * @param {*} value - The new value to be assigned.
+     * steps:
+     * 1. check the value is a formula or not, if not:
+     *   a. assign the value to the cell value
+     *   b. remove all dependencies this cell depends on
+     *   c. reset the formula to empty string
+     *   d. update all cells that depend on this cell
+     * 2. if the value is a formula and it is a circular reference, return an error value "#REF!"
+     * 3. if the value is a formula, check if it is a circular reference, if not:
+     *   a. remove all dependencies this cell depends on
+     *   b. assign the formula to the cell formula
+     *   c. add all dependencies this cell depends on
+     *   d. compute the value of the formula
+     *   e. update all cells that depend on this cell
+     */
+    updateValue(value) {
+        if (!isFormula(value)) {
+            this.value = value;
+            clearDependenciesForCell(this, this.grid);
+            this.formula = "";
+            this.updateDependencies();
+            return this.value;
+        }
+
+        if (isCircularReference(this, value)) {
+            this.value = "#REF!";
+            return this.value;
+        }
+
+        clearDependenciesForCell(this, this.grid);
+        this.formula = value;
+        addDependenciesForCell(this, this.grid);
+        this.computeFormula();
+        this.updateDependencies();
+    }
+
+    computeFormula() {
+        console.log(
+            `Computing formula for cell ${this.row}, ${this.column}`,
+            this
+        );
+
+        // Remove '=' and all whitespace from the formula
+        const expression = this.formula.slice(1).replace(/\s/g, "");
+
+        // Split the expression based on operators (+, -, *, /)
+        let parts = expression.split(/([+*/-])/);
+
+        // Replace cell references with their values
+        parts = parts.map((part) => {
+            if (part.startsWith("SUM")) {
+                const [startRef, endRef] = part
+                    .slice(4, -1)
+                    .split(":")
+                    .map((ref) => referenceToIndex(ref));
+                let sum = 0;
+                for (let i = startRef[0]; i <= endRef[0]; i++) {
+                    for (let j = startRef[1]; j <= endRef[1]; j++) {
+                        this.grid.getCell(i, j)
+                            ? (sum += Number(this.grid.getCell(i, j).value))
+                            : (sum += 0);
+                    }
+                }
+                return sum;
+            }
+
+            if (part.match(/[A-Z]+[0-9]+/)) {
+                const refCell = this.grid.getCell(...referenceToIndex(part));
+                return refCell ? refCell.value : 0;
+            }
+
+            return part;
+        });
+
+        // Rebuild the formula using the computed parts
+        const newFormula = parts.join("");
+
+        // Evaluate the formula and assign the result to the cell
+        // Todo: the eval function is dangerous, we should use a library like math.js
+        try {
+            this.value = eval(newFormula);
+        } catch (e) {
+            this.value = "#VALUE!";
+        }
+    }
+}
+
+function addDependenciesForCell(cell, grid) {
+    if (!cell instanceof Cell || !grid instanceof Grid) {
+        throw new Error("Invalid arguments");
+    }
+
+    for (const depentCell of getAllDependentCellsFromFormula(
+        cell.formula,
+        grid
+    )) {
+        depentCell.addDependency(cell);
+    }
+}
+
+function clearDependenciesForCell(cell, grid) {
+    if (!cell instanceof Cell || !grid instanceof Grid) {
+        throw new Error("Invalid arguments");
+    }
+
+    for (const depentCell of getAllDependentCellsFromFormula(
+        cell.formula,
+        grid
+    )) {
+        depentCell.removeDependency(cell);
     }
 }
