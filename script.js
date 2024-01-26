@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function renderSpreadsheet(grid, container) {
-    if (!grid instanceof Grid || !container instanceof HTMLElement) {
+    if (!(grid instanceof Grid) || !(container instanceof HTMLElement)) {
         throw new Error("Invalid arguments");
     }
 
@@ -39,7 +39,7 @@ function renderRow(rowCells) {
 }
 
 function renderCell(cell) {
-    if (!cell instanceof Cell) {
+    if (!(cell instanceof Cell)) {
         throw new Error("Invalid arguments");
     }
 
@@ -95,7 +95,10 @@ function renderCell(cell) {
 }
 
 function initRefreshButton(grid, spreadsheetContainer) {
-    if (!grid instanceof Grid && !spreadsheetContainer instanceof HTMLElement) {
+    if (
+        !(grid instanceof Grid) &&
+        !(spreadsheetContainer instanceof HTMLElement)
+    ) {
         throw new Error("Invalid arguments");
     }
 
@@ -205,7 +208,7 @@ function isFormula(value) {
 }
 
 function getAllDependentCellsFromFormula(formula, grid) {
-    if (!grid instanceof Grid) {
+    if (!(grid instanceof Grid)) {
         throw new Error("Invalid arguments");
     }
 
@@ -241,7 +244,7 @@ function getAllDependentCellsFromFormula(formula, grid) {
 }
 
 function isCircularReference(cell, formula) {
-    if (!cell instanceof Cell || typeof formula !== "string") {
+    if (!(cell instanceof Cell) || typeof formula !== "string") {
         throw new Error("Invalid arguments");
     }
 
@@ -309,7 +312,7 @@ class Cell {
     }
 
     addDependency(cell) {
-        if (!cell instanceof Cell) {
+        if (!(cell instanceof Cell)) {
             throw new Error("Invalid arguments");
         }
 
@@ -319,7 +322,7 @@ class Cell {
     }
 
     removeDependency(cell) {
-        if (!cell instanceof Cell) {
+        if (!(cell instanceof Cell)) {
             throw new Error("Invalid arguments");
         }
 
@@ -426,7 +429,7 @@ class Cell {
 }
 
 function addDependenciesForCell(cell, grid) {
-    if (!cell instanceof Cell || !grid instanceof Grid) {
+    if (!(cell instanceof Cell) || !(grid instanceof Grid)) {
         throw new Error("Invalid arguments");
     }
 
@@ -439,7 +442,7 @@ function addDependenciesForCell(cell, grid) {
 }
 
 function clearDependenciesForCell(cell, grid) {
-    if (!cell instanceof Cell || !grid instanceof Grid) {
+    if (!(cell instanceof Cell) || !(grid instanceof Grid)) {
         throw new Error("Invalid arguments");
     }
 
